@@ -1,0 +1,47 @@
+version: '3.8'  
+
+services:
+  dotnet-coink:
+    build:
+      context: ./CoinkRestAPI
+      dockerfile: Dockerfile
+      args:
+        - COINK_USERNAME=${COINK_USERNAME}
+        - COINK_PWD=${COINK_PWD}
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+      - ASPNETCORE_URLS=http://+:5258
+    ports:
+      - "5258:5258" 
+    depends_on:
+      postgres-coink:
+        condition: service_healthy
+    restart: unless-stopped  
+
+  postgres-coink:
+    build:
+      context: ./postgres_db
+      dockerfile: Dockerfile
+      args:
+        - COINK_USERNAME=${COINK_USERNAME}
+        - COINK_PWD=${COINK_PWD}
+    environment:
+      POSTGRES_DB: userregistration
+      POSTGRES_USER: ${COINK_USERNAME}  
+      POSTGRES_PASSWORD: ${COINK_PWD}
+    ports:
+      - "5431:5432"   # Se mapea a este puerto en caso de que tu maquina anfitriona 
+                      # tambien se tenga instalado PostgreSQL, pero que quiera acceder
+                      # a la db en el container. 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${COINK_USERNAME} -d userregistration"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: coink_postgres_data  
